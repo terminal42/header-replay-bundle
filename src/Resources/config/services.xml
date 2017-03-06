@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services
+        http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <service
+                id="terminal42.header_replay.header_replay_listener"
+                class="Terminal42\HeaderReplay\EventListener\HeaderReplayListener">
+            <argument type="service" id="event_dispatcher"/>
+            <tag
+                    name="kernel.event_listener"
+                    event="kernel.request"
+                    method="onKernelRequest"
+                    priority="7"/> <!-- 8 is the firewall -->
+        </service>
+    </services>
+</container>
