@@ -5,7 +5,7 @@ terminal42/header-replay-bundle
 [![](https://img.shields.io/coveralls/terminal42/header-replay-bundle/master.svg?style=flat-square)](https://coveralls.io/github/terminal42/header-replay-bundle)
 
 Why?
-====
+----
 
 Caching is a very important but also very hard task of any application. Reverse
 proxies help us to maintain a shared cache on (or in front of) your web server.
