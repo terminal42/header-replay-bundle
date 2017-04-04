@@ -1,0 +1,41 @@
+title Preflight requests
+
+Client->Reverse Proxy: Master request
+
+note over Client, Reverse Proxy
+    Accept: text/html
+    Cookie: PHPSESSID=foobar 
+end note
+
+Reverse Proxy->Application: Preflight request
+
+note over Reverse Proxy, Application
+    Accept: application/vnd.t42.header-replay
+end note
+
+Application->Reverse Proxy: Replay headers
+
+note over Application, Reverse Proxy
+    Content-Type: application/vnd.t42.header-replay
+    T42-Replay-Headers: Page-Layout, Foobar
+    Page-Layout: mobile
+    Foobar: whatever
+end note
+
+Reverse Proxy->Application: Master request with replay headers
+
+note over Reverse Proxy, Application
+    Accept: text/html
+    Cookie: PHPSESSID=foobar
+    Page-Layout: mobile
+    Foobar: whatever
+end note
+
+Application->Reverse Proxy: Response
+
+note over Application, Reverse Proxy
+    Content-Type: text/html
+    Vary: Page-Layout, Foobar
+end note
+
+Reverse Proxy->Client: Response

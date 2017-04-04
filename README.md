@@ -4,7 +4,7 @@ terminal42/header-replay-bundle
 [![](https://img.shields.io/travis/terminal42/header-replay-bundle/master.svg?style=flat-square)](https://travis-ci.org/terminal42/header-replay-bundle/)
 [![](https://img.shields.io/coveralls/terminal42/header-replay-bundle/master.svg?style=flat-square)](https://coveralls.io/github/terminal42/header-replay-bundle)
 
-Why?
+What is this?
 ----
 
 Caching is a very important but also very hard task of any application. Reverse
@@ -39,9 +39,12 @@ only ever consider one of your page layouts. Bummer!
 Of course, there is a solution to it. I call it "preflight request" but I haven't
 found a clear definition for it yet, but the concept is simple:
 
+![Diagram supporting the explanation that follows in text form](./docs/preflight_requests.png "Diagram")
+
+
 1. Client sends request to server.
 2. Proxy intercepts the request to try to serve from the cache.
-3. Based on some conditions (usually `Cookie` or `Authorization` headers) the proxy executes a "prefligh request" to the real application.
+3. Based on some conditions (usually `Cookie` or `Authorization` headers) the proxy executes a "preflight request" to the real application.
 4. The real application notices it's just a "preflight request" and replies with the "replay headers" (in our example `Page-Layout: <value-based-on-session>`)
 5. The proxy "replays" the headers of the preflight request onto the real request and starts over.
 6. Now the proxy checks the internal cache again if a cache entry wanted to `Vary` on `Page-Layout` and correctly serves different versions for the same URI.
