@@ -134,7 +134,7 @@ services:
     app.listener.header_replay.page_layout:
         class: AppBundle\EventListener\HeaderReplay\PageLayoutListener
         tags:
-            - { name: kernel.event_listener, event: t42.header_replay, method: onReplay }
+            - { name: kernel.event_listener, event: terminal42.header_replay, method: onReplay }
 ```
 
 ```php

@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class HeaderReplayEvent extends Event
 {
-    const EVENT_NAME = 't42.header_replay';
+    const EVENT_NAME = 'terminal42.header_replay';
 
     /**
      * @var Request
