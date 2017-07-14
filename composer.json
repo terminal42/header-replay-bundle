@@ -11,8 +11,8 @@
     ],
     "require": {
         "php": ">=5.6,<8",
-        "friendsofsymfony/http-cache-bundle": "2.*@dev",
-        "friendsofsymfony/http-cache": "2.*@dev"
+        "friendsofsymfony/http-cache-bundle": "2.*",
+        "friendsofsymfony/http-cache": "2.*"
     },
     "require-dev": {
         "php-http/guzzle6-adapter": "^1.1",
@@ -28,11 +28,6 @@
     "autoload-dev": {
         "psr-4": {
             "Terminal42\\HeaderReplay\\Test\\": "tests"
-        }
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-master": "1.0.x-dev"
         }
     }
 }
