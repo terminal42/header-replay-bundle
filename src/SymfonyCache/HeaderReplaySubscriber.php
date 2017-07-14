@@ -14,77 +14,94 @@ namespace Terminal42\HeaderReplay\SymfonyCache;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use FOS\HttpCache\SymfonyCache\Events;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\HttpCache\HttpCache;
 use Terminal42\HeaderReplay\EventListener\HeaderReplayListener;
 
 class HeaderReplaySubscriber implements EventSubscriberInterface
 {
-    const BACKUP_ACCEPT_HEADER = 'T42-Replay-Headers-Original-Accept';
+    /**
+     * @var array
+     */
+    private $userContextHeaders = [];
 
     /**
-     * Retry
-     * @var int
+     * HeaderReplaySubscriber constructor.
+     *
+     * @param array $userContextHeaders
      */
-    private $retry = 0;
+    public function __construct(array $userContextHeaders = ['Cookie', 'Authorization'])
+    {
+        $this->userContextHeaders = array_map('strtolower', $userContextHeaders);
+    }
+
+    /**
+     * @return array
+     */
+    public function getUserContextHeaders()
+    {
+        return $this->userContextHeaders;
+    }
 
     /**
      * @param CacheEvent $event
      */
     public function preHandle(CacheEvent $event)
     {
-        $request = $event->getRequest();
+        $httpCache = $event->getKernel();
 
-        if (0 === $this->retry) {
-            $request->headers->set(self::BACKUP_ACCEPT_HEADER, $request->headers->get('Accept'));
-            $request->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
-        }
-    }
-
-    /**
-     * @param CacheEvent $event
-     */
-    public function postHandle(CacheEvent $event)
-    {
-        $response = $event->getResponse();
-
-        if (null === $response || $this->retry > 0 || 200 !== $response->getStatusCode()) {
+        // If the kernel provided by the event is not an HttpCache kernel, we
+        // don't know how to fetch the original kernel, so this cannot work.
+        if (!$httpCache instanceof HttpCache) {
             return;
         }
 
-        if (!$response->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)
-            && !$response->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)
+        $request = $event->getRequest();
+
+        // Preflight request is only relevant for cacheable requests
+        if (!$request->isMethodCacheable()) {
+            return;
+        }
+
+        // User context headers to not match, do not execute a preflight request
+        if (!$this->checkRequest($request)) {
+            return;
+        }
+
+        // Duplicate the original request for the accept header
+        $duplicate = $request->duplicate();
+        $duplicate->setMethod('HEAD');
+        $duplicate->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
+
+        // Pass the duplicated request to the original kernel (so cache is bypassed)
+        // which should result in the preflight request response handled by the
+        // HeaderReplayListener
+        $preflightResponse = $httpCache->getKernel()->handle($duplicate);
+
+        // If the response is not from the HeaderReplayListener we don't know
+        // who handled it, so we don't do anything
+        if (200 !== $preflightResponse->getStatusCode()
+            || HeaderReplayListener::CONTENT_TYPE !== $preflightResponse->headers->get('Content-Type')
+            || !($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)
+                || $preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME))
         ) {
             return;
         }
 
-        if (HeaderReplayListener::CONTENT_TYPE !== $response->headers->get('Content-Type')) {
-            return;
-        }
-
-        // Replay
-        $request = $event->getRequest();
-        $headersToReplay = explode(',', $response->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
+        // Otherwise it's our HeaderReplayListener so we replay the headers onto the original request
+        $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
 
         foreach ($headersToReplay as $header) {
-            $request->headers->set($header, $response->headers->get($header));
+            $request->headers->set($header, $preflightResponse->headers->get($header));
         }
 
-        // Reset original Accept header
-        $request->headers->set('Accept', $request->headers->get(self::BACKUP_ACCEPT_HEADER));
-        $request->headers->remove(self::BACKUP_ACCEPT_HEADER);
-
         // Force no cache
-        if ($response->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {
+        if ($preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {
             $request->headers->addCacheControlDirective('no-cache');
         }
 
-        // Increase retry level
-        $this->retry++;
-
-        // This is now actually the real request to the application with the
-        // added headers you can Vary on in your application.
-        $response = $event->getKernel()->handle($request);
-
-        $event->setResponse($response);
+        // The original request now has our decorated/replayed headers and the
+        // kernel can continue normally
     }
 
     /**
@@ -94,7 +111,38 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         return [
             Events::PRE_HANDLE => 'preHandle',
-            Events::POST_HANDLE => 'postHandle',
         ];
+    }
+
+    /**
+     * Check if request is applicable.
+     *
+     * @param Request $request
+     *
+     * @return bool
+     */
+    private function checkRequest(Request $request)
+    {
+        // Only applicable if user context header submitted
+        $oneMatches = false;
+        foreach ($this->userContextHeaders as $contextHeader) {
+            if ($request->headers->has($contextHeader)) {
+                $oneMatches = true;
+                break;
+            }
+
+            if ('cookie' === $contextHeader) {
+                if (0 !== $request->cookies->count()) {
+                    $oneMatches = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$oneMatches) {
+            return false;
+        }
+
+        return true;
     }
 }

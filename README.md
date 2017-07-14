@@ -248,6 +248,9 @@ class AppCache extends HttpCache implements CacheInvalidation
 }
 ```
 
+Note: If you want to enable the subscriber for other headers than `Authorization`
+and `Cookie`, have a look at the constructor of the `HeaderReplaySubscriber`.
+
 
 ### Varnish
 
