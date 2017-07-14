@@ -12,7 +12,6 @@
 namespace Terminal42\HeaderReplay\EventListener;
 
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -30,11 +29,6 @@ class HeaderReplayListener
      private $eventDispatcher;
 
     /**
-     * @var array
-     */
-    private $userContextHeaders = [];
-
-    /**
      * HeaderReplayListener constructor.
      *
      * @param EventDispatcherInterface $eventDispatcher
@@ -42,7 +36,6 @@ class HeaderReplayListener
     public function __construct(EventDispatcherInterface $eventDispatcher)
     {
         $this->eventDispatcher = $eventDispatcher;
-        $this->setUserContextHeaders(['Cookie', 'Authorization']);
     }
 
     /**
@@ -56,9 +49,13 @@ class HeaderReplayListener
 
         $request = $event->getRequest();
 
-        if (!$this->checkRequest($request)) {
+        // If Content-Type matches, we always have to send a response so we
+        // abort if this is not the case
+        if (!in_array(self::CONTENT_TYPE, $request->getAcceptableContentTypes(), true)) {
             return;
         }
+
+        $response = new Response('', 200, ['Content-Type' => self::CONTENT_TYPE]);
 
         $replayEvent = new HeaderReplayEvent($event->getRequest(), new ResponseHeaderBag());
         $this->eventDispatcher->dispatch(HeaderReplayEvent::EVENT_NAME, $replayEvent);
@@ -68,11 +65,11 @@ class HeaderReplayListener
         // Unset cache-control which is added by default
         unset($headers['cache-control']);
 
+        // No headers, return empty response
         if (0 === count($headers)) {
+            $event->setResponse($response);
             return;
         }
-
-        $response = new Response('', 200, ['Content-Type' => self::CONTENT_TYPE]);
 
         // TTL
         $ttl = $replayEvent->getTtl();
@@ -85,76 +82,9 @@ class HeaderReplayListener
             $response->headers->addCacheControlDirective('no-cache');
         }
 
-        $replayHeaders = [];
-
-        foreach ($headers as $k => $v) {
-            $replayHeaders[] = $k;
-            $response->headers->set($k, $v);
-        }
-
-        $response->headers->set(self::REPLAY_HEADER_NAME, implode(',', array_unique($replayHeaders)));
+        $response->headers->add($headers);
+        $response->headers->set(self::REPLAY_HEADER_NAME, implode(',', array_keys($headers)));
 
         $event->setResponse($response);
-    }
-
-    /**
-     * @return array
-     */
-    public function getUserContextHeaders()
-    {
-        return $this->userContextHeaders;
-    }
-
-    /**
-     * @param array $userContextHeaders
-     *
-     * @return HeaderReplayListener
-     */
-    public function setUserContextHeaders($userContextHeaders)
-    {
-        $this->userContextHeaders = array_map('strtolower', $userContextHeaders);
-
-        return $this;
-    }
-
-    /**
-     * Check if request is applicable.
-     *
-     * @param Request $request
-     *
-     * @return bool
-     */
-    private function checkRequest(Request $request)
-    {
-        // Only GET requests are allowed
-        if ('GET' !== $request->getMethod()) {
-            return false;
-        }
-
-        // Only applicable if user context header submitted
-        $oneMatches = false;
-        foreach ($this->userContextHeaders as $contextHeader) {
-            if ($request->headers->has($contextHeader)) {
-                $oneMatches = true;
-                break;
-            }
-
-            if ('cookie' === $contextHeader) {
-                if (0 !== $request->cookies->count()) {
-                    $oneMatches = true;
-                    break;
-                }
-            }
-        }
-
-        if (!$oneMatches) {
-            return false;
-        }
-
-        if (!in_array(self::CONTENT_TYPE, $request->getAcceptableContentTypes(), true)) {
-            return false;
-        }
-
-        return true;
     }
 }

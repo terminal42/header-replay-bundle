@@ -16,8 +16,14 @@ use FOS\HttpCache\SymfonyCache\CacheInvalidation;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpCache\HttpCache;
+use Symfony\Component\HttpKernel\HttpCache\StoreInterface;
+use Symfony\Component\HttpKernel\HttpCache\SurrogateInterface;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Terminal42\HeaderReplay\EventListener\HeaderReplayListener;
 use Terminal42\HeaderReplay\SymfonyCache\HeaderReplaySubscriber;
+use Terminal42\HeaderReplay\Test\SymfonyCache\DummyHttpCacheKernel;
+use Terminal42\HeaderReplay\Test\SymfonyCache\DummyNonHttpCacheKernel;
 
 class HeaderReplaySubscriberTest extends TestCase
 {
@@ -26,177 +32,220 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $events = $subscriber::getSubscribedEvents();
 
-        $this->assertCount(2, $events);
+        $this->assertCount(1, $events);
     }
 
-    public function testPreHandle()
+    public function testUserContextHeaders()
     {
-        $request = Request::create('/foobar');
-        $request->headers->set('Accept', 'foobar');
+        $subscriber = new HeaderReplaySubscriber();
+        $this->assertSame(['cookie', 'authorization'], $subscriber->getUserContextHeaders());
+
+        $subscriber = new HeaderReplaySubscriber(['Whatever', 'Foobar']);
+        $this->assertSame(['whatever', 'foobar'], $subscriber->getUserContextHeaders());
+    }
+
+    public function testNothingHappensIfKernelIsNotHttpCache()
+    {
+        $kernel = new DummyNonHttpCacheKernel();
+
+        $request = $this->createMock(Request::class);
+        $request
+            ->expects($this->never())
+            ->method('isMethodCacheable');
+
         $cacheEvent = new CacheEvent(
-            $this->createMock(CacheInvalidation::class),
+            $kernel,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testNothingHappensIfMethodNotCacheable()
+    {
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->never())
+            ->method('handle');
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'POST');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testNothingHappensIfContextHeadersNotGiven()
+    {
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->never())
+            ->method('handle');
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testKernelIsCorrectlyCalledWithPreflightAcceptHeader()
+    {
+        $response = new Response();
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->with($this->callback(function(Request $request) {
+                return HeaderReplayListener::CONTENT_TYPE == $request->headers->get('Accept');
+            }))
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    /**
+     * @param Response $response
+     * @dataProvider noHeadersAddedIfResponseIsInvalid
+     */
+    public function testNoHeadersAddedIfResponseIsInvalid(Response $response)
+    {
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $preCount = $request->headers->count();
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
             $request
         );
 
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        $this->assertSame('foobar', $cacheEvent->getRequest()->headers->get(HeaderReplaySubscriber::BACKUP_ACCEPT_HEADER));
-        $this->assertSame(HeaderReplayListener::CONTENT_TYPE, $cacheEvent->getRequest()->headers->get('Accept'));
+        // Assert no headers were added
+        $this->assertSame($preCount, $request->headers->count());
     }
 
-    public function testNothingHappensInPostHandleIfResponseNull()
+    public function testReplayHeaders()
     {
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->never())
-            ->method('handle');
-
-        $request = Request::create('/foobar');
-        $cacheEvent = new CacheEvent(
-            $kernel,
-            $request
-        );
-
-        $subscriber = new HeaderReplaySubscriber();
-        $subscriber->postHandle($cacheEvent);
-    }
-
-    public function testNothingHappensInPostHandleIfResponseHasWrongStatusCode()
-    {
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->never())
-            ->method('handle');
-
-        $response = new Response('', 300);
-
-        $request = Request::create('/foobar');
-        $cacheEvent = new CacheEvent(
-            $kernel,
-            $request,
-            $response
-        );
-
-        $subscriber = new HeaderReplaySubscriber();
-        $subscriber->postHandle($cacheEvent);
-    }
-
-    public function testNothingHappensInPostHandleIfResponseHasNoHeaders()
-    {
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->never())
-            ->method('handle');
-
-        $response = new Response();
-
-        $request = Request::create('/foobar');
-        $cacheEvent = new CacheEvent(
-            $kernel,
-            $request,
-            $response
-        );
-
-        $subscriber = new HeaderReplaySubscriber();
-        $subscriber->postHandle($cacheEvent);
-    }
-
-    public function testNothingHappensInPostHandleIfResponseHasWrongContentType()
-    {
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->never())
-            ->method('handle');
-
-        $response = new Response();
-        $response->headers->set(HeaderReplayListener::REPLAY_HEADER_NAME, 'foobar');
-
-        $request = Request::create('/foobar');
-        $cacheEvent = new CacheEvent(
-            $kernel,
-            $request,
-            $response
-        );
-
-        $subscriber = new HeaderReplaySubscriber();
-        $subscriber->postHandle($cacheEvent);
-    }
-
-    public function testReplayHeadersInPostHandle()
-    {
-        /** @var Request $requestPassedToHandle */
-        $requestPassedToHandle = null;
-
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->once())
-            ->method('handle')
-            ->with($this->callback(function($request) use (&$requestPassedToHandle) {
-                $requestPassedToHandle = $request;
-                return true;
-            }))
-            ->willReturn(new Response());
-
         $response = new Response();
         $response->headers->set(HeaderReplayListener::REPLAY_HEADER_NAME, 'foobar,twobar');
         $response->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
         $response->headers->set('foobar', 'nonsense');
         $response->headers->set('twobar', 'whatever');
 
-        $request = Request::create('/foobar');
-        $request->headers->set('Accept', 'complicated-original-accept');
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
         $cacheEvent = new CacheEvent(
-            $kernel,
-            $request,
-            $response
+            $httpCache,
+            $request
         );
 
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
-        $subscriber->postHandle($cacheEvent);
 
         // Assert headers replicated
-        $this->assertSame('nonsense', $requestPassedToHandle->headers->get('foobar'));
-        $this->assertSame('whatever', $requestPassedToHandle->headers->get('twobar'));
-        $this->assertSame('complicated-original-accept', $requestPassedToHandle->headers->get('Accept'));
-
-        // Assert "internal" headers are not present anymore
-        $this->assertNull($requestPassedToHandle->headers->get(HeaderReplaySubscriber::BACKUP_ACCEPT_HEADER));
-        $this->assertNull($requestPassedToHandle->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
+        $this->assertSame('nonsense', $request->headers->get('foobar'));
+        $this->assertSame('whatever', $request->headers->get('twobar'));
     }
 
-    public function testForceNoCacheInPostHandle()
+    public function testForceNoCache()
     {
-        /** @var Request $requestPassedToHandle */
-        $requestPassedToHandle = null;
-
-        $kernel = $this->createMock(CacheInvalidation::class);
-        $kernel
-            ->expects($this->once())
-            ->method('handle')
-            ->with($this->callback(function($request) use (&$requestPassedToHandle) {
-                $requestPassedToHandle = $request;
-                return true;
-            }))
-            ->willReturn(new Response());
-
         $response = new Response();
         $response->headers->set(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME, 'not-relevant');
         $response->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
 
-        $request = Request::create('/foobar');
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->headers->set('Authorization', 'foobar');
+
         $cacheEvent = new CacheEvent(
-            $kernel,
-            $request,
-            $response
+            $httpCache,
+            $request
         );
 
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
-        $subscriber->postHandle($cacheEvent);
 
-        // Assert headers replicated
-        $this->assertTrue($requestPassedToHandle->headers->getCacheControlDirective('no-cache'));
+        //var_dump($request->headers->getCacheControlDirective());exit;
+        $this->assertTrue($request->headers->getCacheControlDirective('no-cache'));
+    }
+
+    public function noHeadersAddedIfResponseIsInvalid()
+    {
+        return [
+            'Response has wrong status code' => [
+                new Response('', 303)
+            ],
+            'Response has wrong content type but correct status code' => [
+                new Response('', 200, ['Content-Type', 'application/json'])
+            ],
+            'Response has correct content type and status code but no header' => [
+                new Response('', 200, ['Content-Type', HeaderReplayListener::CONTENT_TYPE])
+            ]
+        ];
+    }
+
+    /**
+     * @param HttpKernelInterface $httpKernel
+     *
+     * @return DummyHttpCacheKernel
+     */
+    private function getHttpCacheKernelWithGivenKernel(HttpKernelInterface $httpKernel)
+    {
+        return new DummyHttpCacheKernel(
+            $httpKernel,
+            $this->createMock(StoreInterface::class),
+            $this->createMock(SurrogateInterface::class)
+        );
     }
 }
