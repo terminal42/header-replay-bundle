@@ -46,7 +46,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         $response = $event->getResponse();
 
-        if (null === $response || $this->retry > 0) {
+        if (null === $response || $this->retry > 0 || 200 !== $response->getStatusCode()) {
             return;
         }
 

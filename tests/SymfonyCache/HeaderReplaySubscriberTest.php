@@ -62,6 +62,26 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber->postHandle($cacheEvent);
     }
 
+    public function testNothingHappensInPostHandleIfResponseHasWrongStatusCode()
+    {
+        $kernel = $this->createMock(CacheInvalidation::class);
+        $kernel
+            ->expects($this->never())
+            ->method('handle');
+
+        $response = new Response('', 300);
+
+        $request = Request::create('/foobar');
+        $cacheEvent = new CacheEvent(
+            $kernel,
+            $request,
+            $response
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->postHandle($cacheEvent);
+    }
+
     public function testNothingHappensInPostHandleIfResponseHasNoHeaders()
     {
         $kernel = $this->createMock(CacheInvalidation::class);
