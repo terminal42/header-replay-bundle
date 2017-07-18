@@ -24,17 +24,6 @@ use Terminal42\HeaderReplay\EventListener\HeaderReplayListener;
 
 class HeaderReplayListenerTest extends TestCase
 {
-    public function testSetAndGetUsercontextHeaders()
-    {
-        $dispatcher = $this->createMock(EventDispatcherInterface::class);
-
-        $listener = new HeaderReplayListener($dispatcher);
-
-        $this->assertSame(['cookie', 'authorization'], $listener->getUserContextHeaders());
-        $listener->setUserContextHeaders(['Whatever', 'Foobar']);
-        $this->assertSame(['whatever', 'foobar'], $listener->getUserContextHeaders());
-    }
-
     public function testNothingHappensIfNotMasterRequest()
     {
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
@@ -53,17 +42,14 @@ class HeaderReplayListenerTest extends TestCase
         $listener->onKernelRequest($event);
     }
 
-    /**
-     * @param Request $request
-     * @dataProvider nothingHappensIfRequestIsNotApplicable
-     */
-    public function testNothingHappensIfRequestIsNotApplicable(Request $request)
+    public function testNothingHappensIfWrongAcceptHeader()
     {
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects($this->never())
             ->method('dispatch');
 
         $listener = new HeaderReplayListener($dispatcher);
+        $request = Request::create('foobar', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Basic foobar']);
 
         $event = new GetResponseEvent(
             $this->mockKernel(),
@@ -74,14 +60,13 @@ class HeaderReplayListenerTest extends TestCase
         $listener->onKernelRequest($event);
     }
 
-    public function testNothingHappensIfRequestApplicableButNoHeaders()
+    public function testEmptyResponseWithCorrectContentTypeIfNoListeners()
     {
-        $dispatcher = $this->createMock(EventDispatcherInterface::class);
-
-        $listener = new HeaderReplayListener($dispatcher);
-
         $request = Request::create('foobar', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Basic foobar']);
         $request->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
+
+        $dispatcher = new EventDispatcher();
+        $listener = new HeaderReplayListener($dispatcher);
 
         $event = new GetResponseEvent(
             $this->mockKernel(),
@@ -91,7 +76,11 @@ class HeaderReplayListenerTest extends TestCase
 
         $listener->onKernelRequest($event);
 
-        $this->assertNull($event->getResponse());
+        $response = $event->getResponse();
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(HeaderReplayListener::CONTENT_TYPE, $response->headers->get('Content-Type'));
+        $this->assertFalse($response->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME));
     }
 
     public function testValidResponseWithoutTtl()
@@ -148,24 +137,6 @@ class HeaderReplayListenerTest extends TestCase
         $this->assertSame('foo', $event->getResponse()->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
         $this->assertTrue($event->getResponse()->isCacheable());
         $this->assertTrue($event->getResponse()->headers->hasCacheControlDirective('max-age'));
-    }
-
-    public function nothingHappensIfRequestIsNotApplicable()
-    {
-        return [
-            [
-                Request::create('foobar', 'POST') // Not a GET request
-            ],
-            [
-                Request::create('foobar', 'GET') // Not having any user context header
-            ],
-            [
-                Request::create('foobar', 'GET', [], ['Test-Cookie']) // Not having the correct Content-Type but Cookie
-            ],
-            [
-                Request::create('foobar', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Basic foobar']) // Not having the correct Content-Type but Authorization
-            ],
-        ];
     }
 
     private function mockKernel()
