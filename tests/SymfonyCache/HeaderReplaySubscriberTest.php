@@ -131,9 +131,9 @@ class HeaderReplaySubscriberTest extends TestCase
 
     /**
      * @param Response $response
-     * @dataProvider noHeadersAddedIfResponseIsInvalid
+     * @dataProvider noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse
      */
-    public function testNoHeadersAddedIfResponseIsInvalid(Response $response)
+    public function testNoHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse(Response $response)
     {
         $kernel = $this->createMock(HttpCache::class);
         $kernel
@@ -158,6 +158,9 @@ class HeaderReplaySubscriberTest extends TestCase
 
         // Assert no headers were added
         $this->assertSame($preCount, $request->headers->count());
+
+        // Assert response was set to event
+        $this->assertSame($response, $cacheEvent->getResponse());
     }
 
     public function testReplayHeaders()
@@ -221,7 +224,7 @@ class HeaderReplaySubscriberTest extends TestCase
         $this->assertTrue($request->headers->getCacheControlDirective('no-cache'));
     }
 
-    public function noHeadersAddedIfResponseIsInvalid()
+    public function noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse()
     {
         return [
             'Response has wrong status code' => [

@@ -78,13 +78,14 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // HeaderReplayListener
         $preflightResponse = $httpCache->getKernel()->handle($duplicate);
 
-        // If the response is not from the HeaderReplayListener we don't know
-        // who handled it, so we don't do anything
+        // If the response is not from the HeaderReplayListener somebody else
+        // handled it so we go for an early return here
         if (200 !== $preflightResponse->getStatusCode()
             || HeaderReplayListener::CONTENT_TYPE !== $preflightResponse->headers->get('Content-Type')
             || !($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)
                 || $preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME))
         ) {
+            $event->setResponse($preflightResponse);
             return;
         }
 
