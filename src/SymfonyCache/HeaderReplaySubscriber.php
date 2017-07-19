@@ -82,18 +82,18 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // handled it so we go for an early return here
         if (200 !== $preflightResponse->getStatusCode()
             || HeaderReplayListener::CONTENT_TYPE !== $preflightResponse->headers->get('Content-Type')
-            || !($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)
-                || $preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME))
         ) {
             $event->setResponse($preflightResponse);
             return;
         }
 
-        // Otherwise it's our HeaderReplayListener so we replay the headers onto the original request
-        $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
+        // Replay headers onto original request
+        if ($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)) {
+            $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
 
-        foreach ($headersToReplay as $header) {
-            $request->headers->set($header, $preflightResponse->headers->get($header));
+            foreach ($headersToReplay as $header) {
+                $request->headers->set($header, $preflightResponse->headers->get($header));
+            }
         }
 
         // Force no cache
