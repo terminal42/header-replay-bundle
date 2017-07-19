@@ -71,17 +71,6 @@ class HeaderReplayListener
             return;
         }
 
-        // TTL
-        $ttl = $replayEvent->getTtl();
-
-        if ($ttl > 0) {
-            $response->setClientTtl($ttl);
-            $response->setPublic();
-        } else {
-            $response->setClientTtl(0);
-            $response->headers->addCacheControlDirective('no-cache');
-        }
-
         $response->headers->add($headers);
         $response->headers->set(self::REPLAY_HEADER_NAME, implode(',', array_keys($headers)));
 

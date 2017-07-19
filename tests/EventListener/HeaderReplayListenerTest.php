@@ -111,34 +111,6 @@ class HeaderReplayListenerTest extends TestCase
         $this->assertFalse($event->getResponse()->isCacheable());
     }
 
-    public function testValidResponseWithTtl()
-    {
-        $request = Request::create('foobar', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Basic foobar']);
-        $request->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
-
-        $dispatcher = new EventDispatcher();
-        $dispatcher->addListener(HeaderReplayEvent::EVENT_NAME, function(HeaderReplayEvent $event) {
-            $event->getHeaders()->set('Foo', 'Bar');
-            $event->setTtl(40);
-        });
-
-        $listener = new HeaderReplayListener($dispatcher);
-
-        $event = new GetResponseEvent(
-            $this->mockKernel(),
-            $request,
-            HttpKernelInterface::MASTER_REQUEST
-        );
-
-        $listener->onKernelRequest($event);
-
-        $this->assertInstanceOf(Response::class, $event->getResponse());
-        $this->assertSame('Bar', $event->getResponse()->headers->get('foo'));
-        $this->assertSame('foo', $event->getResponse()->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
-        $this->assertTrue($event->getResponse()->isCacheable());
-        $this->assertTrue($event->getResponse()->headers->hasCacheControlDirective('max-age'));
-    }
-
     private function mockKernel()
     {
         return $this->createMock(HttpKernelInterface::class);

@@ -32,24 +32,4 @@ class HeaderReplayEventTest extends TestCase
 
         $this->assertSame('Bar', $event->getHeaders()->get('Foo'));
     }
-
-    public function testSetTtl()
-    {
-        $request = new Request();
-        $headers = new ResponseHeaderBag();
-
-        $event = new HeaderReplayEvent($request, $headers);
-
-        $event->setTtl(0);
-        $this->assertSame(0, $event->getTtl());
-
-        $event->setTtl(50);
-        $this->assertSame(50, $event->getTtl());
-
-        $event->setTtl(100);
-        $this->assertSame(50, $event->getTtl());
-
-        $event->setTtl(30);
-        $this->assertSame(30, $event->getTtl());
-    }
 }
