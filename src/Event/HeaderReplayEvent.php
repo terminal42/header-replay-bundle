@@ -30,11 +30,6 @@ class HeaderReplayEvent extends Event
     private $headers;
 
     /**
-     * @var int
-     */
-    private $ttl = 0;
-
-    /**
      * ReplayHeadersEvent constructor.
      *
      * @param Request           $request
@@ -51,7 +46,9 @@ class HeaderReplayEvent extends Event
      */
     public function getTtl()
     {
-        return $this->ttl;
+        @trigger_error('Using HeaderReplayEvent::getTtl() and will always return 0. Method will be removed in version 2.0.', E_USER_DEPRECATED);
+
+        return 0;
     }
 
     /**
@@ -65,16 +62,7 @@ class HeaderReplayEvent extends Event
      */
     public function setTtl($ttl)
     {
-        if (0 === $ttl || 0 === $this->ttl) {
-            $this->ttl = $ttl;
-
-            return $this;
-        }
-
-        // Only set it if lower than existing TTL
-        if ($ttl < $this->ttl) {
-            $this->ttl = $ttl;
-        }
+        @trigger_error('Using HeaderReplayEvent::setTtl() has been deprecated and has no effect. Method will be removed in version 2.0.', E_USER_DEPRECATED);
 
         return $this;
     }
