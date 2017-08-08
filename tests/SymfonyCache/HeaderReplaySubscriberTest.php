@@ -12,7 +12,6 @@
 namespace Terminal42\HeaderReplay\Test\EventListener;
 
 use FOS\HttpCache\SymfonyCache\CacheEvent;
-use FOS\HttpCache\SymfonyCache\CacheInvalidation;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -109,9 +108,9 @@ class HeaderReplaySubscriberTest extends TestCase
         $kernel
             ->expects($this->once())
             ->method('handle')
-            ->with($this->callback(function(Request $request) {
-                return 'HEAD' == $request->getMethod() &&
-                    HeaderReplayListener::CONTENT_TYPE == $request->headers->get('Accept');
+            ->with($this->callback(function (Request $request) {
+                return 'HEAD' === $request->getMethod() &&
+                    HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
             }))
             ->willReturn($response);
 
@@ -228,14 +227,14 @@ class HeaderReplaySubscriberTest extends TestCase
     {
         return [
             'Response has wrong status code' => [
-                new Response('', 303)
+                new Response('', 303),
             ],
             'Response has wrong content type but correct status code' => [
-                new Response('', 200, ['Content-Type', 'application/json'])
+                new Response('', 200, ['Content-Type', 'application/json']),
             ],
             'Response has correct content type and status code but no header' => [
-                new Response('', 200, ['Content-Type', HeaderReplayListener::CONTENT_TYPE])
-            ]
+                new Response('', 200, ['Content-Type', HeaderReplayListener::CONTENT_TYPE]),
+            ],
         ];
     }
 

@@ -11,7 +11,6 @@
 
 namespace Terminal42\HeaderReplay\Test\SymfonyCache;
 
-
 use FOS\HttpCache\SymfonyCache\CacheInvalidation;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +20,6 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 class DummyNonHttpCacheKernel implements CacheInvalidation
 {
-
     /**
      * Forwards the Request to the backend and determines whether the response should be stored.
      *
@@ -61,9 +59,9 @@ class DummyNonHttpCacheKernel implements CacheInvalidation
      *                         (one of HttpKernelInterface::MASTER_REQUEST or HttpKernelInterface::SUB_REQUEST)
      * @param bool    $catch   Whether to catch exceptions or not
      *
-     * @return Response A Response instance
-     *
      * @throws \Exception When an Exception occurs during processing
+     *
+     * @return Response A Response instance
      */
     public function handle(Request $request, $type = self::MASTER_REQUEST, $catch = true)
     {

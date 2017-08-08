@@ -84,6 +84,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             || HeaderReplayListener::CONTENT_TYPE !== $preflightResponse->headers->get('Content-Type')
         ) {
             $event->setResponse($preflightResponse);
+
             return;
         }
 
