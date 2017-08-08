@@ -16,7 +16,6 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Terminal42\HeaderReplay\Event\HeaderReplayEvent;
@@ -89,7 +88,7 @@ class HeaderReplayListenerTest extends TestCase
         $request->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
 
         $dispatcher = new EventDispatcher();
-        $dispatcher->addListener(HeaderReplayEvent::EVENT_NAME, function(HeaderReplayEvent $event) {
+        $dispatcher->addListener(HeaderReplayEvent::EVENT_NAME, function (HeaderReplayEvent $event) {
             $event->getHeaders()->set('Foo', 'Bar');
             $event->getHeaders()->set('Foo2', 'Bar2');
         });

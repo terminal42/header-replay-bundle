@@ -43,6 +43,7 @@ class HeaderReplayEvent extends Event
 
     /**
      * @return int
+     * @codeCoverageIgnore
      */
     public function getTtl()
     {
@@ -59,6 +60,7 @@ class HeaderReplayEvent extends Event
      * @param int $ttl
      *
      * @return $this
+     * @codeCoverageIgnore
      */
     public function setTtl($ttl)
     {

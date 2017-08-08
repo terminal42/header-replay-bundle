@@ -11,7 +11,6 @@
 
 namespace Terminal42\HeaderReplay\Test\SymfonyCache;
 
-
 use FOS\HttpCache\SymfonyCache\CacheInvalidation;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;

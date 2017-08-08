@@ -68,6 +68,7 @@ class HeaderReplayListener
         // No headers, return empty response
         if (0 === count($headers)) {
             $event->setResponse($response);
+
             return;
         }
 
