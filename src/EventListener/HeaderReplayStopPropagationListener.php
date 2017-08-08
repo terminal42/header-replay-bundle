@@ -12,8 +12,8 @@
 namespace Terminal42\HeaderReplay\EventListener;
 
 use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
-use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\KernelEvent;
+use Symfony\Component\HttpKernel\Event\PostResponseEvent;
 
 /**
  * Class HeaderReplayStopPropagationListener.
@@ -37,9 +37,9 @@ class HeaderReplayStopPropagationListener
     }
 
     /**
-     * @param FinishRequestEvent $event
+     * @param PostResponseEvent $event
      */
-    public function onKernelTerminate(FinishRequestEvent $event)
+    public function onKernelTerminate(PostResponseEvent $event)
     {
         $this->stopPropagationIfApplicable($event);
     }
