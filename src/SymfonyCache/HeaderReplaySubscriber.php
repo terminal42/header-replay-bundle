@@ -14,8 +14,11 @@ namespace Terminal42\HeaderReplay\SymfonyCache;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use FOS\HttpCache\SymfonyCache\Events;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
+use Symfony\Component\OptionsResolver\Options;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 use Terminal42\HeaderReplay\EventListener\HeaderReplayListener;
 
 class HeaderReplaySubscriber implements EventSubscriberInterface
@@ -23,16 +26,28 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     /**
      * @var array
      */
-    private $userContextHeaders = [];
+    private $options = [];
 
     /**
      * HeaderReplaySubscriber constructor.
      *
-     * @param array $userContextHeaders
+     * @param array $options
      */
-    public function __construct(array $userContextHeaders = ['Cookie', 'Authorization'])
+    public function __construct(array $options = [])
     {
-        $this->userContextHeaders = array_map('strtolower', $userContextHeaders);
+        // BC
+        if (isset($options[0])) {
+            $options = ['user_context_headers' => $options];
+        }
+
+        $resolver = new OptionsResolver();
+        $resolver->setDefault('user_context_headers', ['cookie', 'authorization']);
+        $resolver->setNormalizer('user_context_headers', function (Options $options, $value) {
+            return array_map('strtolower', $value);
+        });
+        $resolver->setDefault('ignore_cookies', []);
+
+        $this->options = $resolver->resolve($options);
     }
 
     /**
@@ -40,7 +55,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
      */
     public function getUserContextHeaders()
     {
-        return $this->userContextHeaders;
+        return $this->options['user_context_headers'];
     }
 
     /**
@@ -127,14 +142,14 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         // Only applicable if user context header submitted
         $oneMatches = false;
-        foreach ($this->userContextHeaders as $contextHeader) {
+        foreach ($this->options['user_context_headers'] as $contextHeader) {
             if ($request->headers->has($contextHeader)) {
                 $oneMatches = true;
                 break;
             }
 
             if ('cookie' === $contextHeader) {
-                if (0 !== $request->cookies->count()) {
+                if ($this->hasRelevantCookie($request->cookies)) {
                     $oneMatches = true;
                     break;
                 }
@@ -146,5 +161,32 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         }
 
         return true;
+    }
+
+    /**
+     * Checks if at least cookies were provided at all and if at least one
+     * is relevant (not ignored) for a preflight request.
+     *
+     * @param ParameterBag $cookies
+     *
+     * @return bool
+     */
+    private function hasRelevantCookie(ParameterBag $cookies)
+    {
+        $count = $cookies->count();
+
+        if (0 === count($this->options['ignore_cookies'])) {
+            return 0 !== $count;
+        }
+
+        foreach ($cookies as $name => $value) {
+            foreach ($this->options['ignore_cookies'] as $rgxp) {
+                if (!preg_match($rgxp, $name)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

@@ -39,8 +39,13 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $this->assertSame(['cookie', 'authorization'], $subscriber->getUserContextHeaders());
 
+        // Test BC
         $subscriber = new HeaderReplaySubscriber(['Whatever', 'Foobar']);
         $this->assertSame(['whatever', 'foobar'], $subscriber->getUserContextHeaders());
+
+        $subscriber = new HeaderReplaySubscriber(['user_context_headers' => ['Whatever', 'Foobar']]);
+        $this->assertSame(['whatever', 'foobar'], $subscriber->getUserContextHeaders());
+
     }
 
     public function testNothingHappensIfKernelIsNotHttpCache()
@@ -98,6 +103,29 @@ class HeaderReplaySubscriberTest extends TestCase
         );
 
         $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testNothingHappensIfCookieGivenButIgnored()
+    {
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->never())
+            ->method('handle');
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Ignore-For-Preflight', 'foobar-value');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber([
+            'ignore_cookies' => ['/^Ignore-For-Preflight$/']
+        ]);
         $subscriber->preHandle($cacheEvent);
     }
 
