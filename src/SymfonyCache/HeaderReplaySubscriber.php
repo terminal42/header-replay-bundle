@@ -179,14 +179,16 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             return 0 !== $count;
         }
 
+        $blackList = $cookies->all();
+
         foreach ($cookies as $name => $value) {
             foreach ($this->options['ignore_cookies'] as $rgxp) {
-                if (!preg_match($rgxp, $name)) {
-                    return true;
+                if (preg_match($rgxp, $name)) {
+                    unset($blackList[$name]);
                 }
             }
         }
 
-        return false;
+        return 0 !== count($blackList);
     }
 }
