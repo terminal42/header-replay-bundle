@@ -248,9 +248,26 @@ class AppCache extends HttpCache implements CacheInvalidation
 }
 ```
 
-Note: If you want to enable the subscriber for other headers than `Authorization`
-and `Cookie`, have a look at the constructor of the `HeaderReplaySubscriber`.
+By default, the `HeaderReplaySubscriber` checks for the headers `Authorization`
+and `Cookie`. You can adjust this by passing the correct `$options` to the
+constructor:
 
+```php
+<?php
+$subscriber = new HeaderReplaySubscriber(['user_context_headers' => ['My-Header']]);
+```
+
+For the special case of `Cookie`, you can also ignore certain cookies if you know
+a preflight request is useless for certain cookies. This option takes an array
+of regular expressions. If you e.g. want to ignore a cookie named `Foobar`, here
+we go:
+
+```php
+<?php
+$subscriber = new HeaderReplaySubscriber([
+    'ignore_cookies' => ['/^Foobar$/']
+]);
+```
 
 ### Varnish
 
