@@ -14,7 +14,6 @@ namespace Terminal42\HeaderReplay\Test\EventListener;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
 use Symfony\Component\HttpKernel\Event\PostResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Terminal42\HeaderReplay\EventListener\HeaderReplayListener;
@@ -30,12 +29,6 @@ class HeaderReplayStopPropagationListenerTest extends TestCase
         $request = new Request();
         $request->headers->set('Accept', HeaderReplayListener::CONTENT_TYPE);
 
-        // kernel.response
-        $event = new FilterResponseEvent($this->mockKernel(), $request, HttpKernelInterface::MASTER_REQUEST, $response);
-
-        $listener->onKernelResponse($event);
-        $this->assertTrue($event->isPropagationStopped());
-
         // kernel.terminate
         $event = new PostResponseEvent($this->mockKernel(), $request, $response);
 
@@ -48,12 +41,6 @@ class HeaderReplayStopPropagationListenerTest extends TestCase
 
         $response = new Response();
         $request = new Request();
-
-        // kernel.response
-        $event = new FilterResponseEvent($this->mockKernel(), $request, HttpKernelInterface::MASTER_REQUEST, $response);
-
-        $listener->onKernelResponse($event);
-        $this->assertFalse($event->isPropagationStopped());
 
         // kernel.terminate
         $event = new PostResponseEvent($this->mockKernel(), $request, $response);
