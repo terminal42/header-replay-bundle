@@ -21,11 +21,6 @@
             <argument type="service" id="event_dispatcher"/>
             <tag
                     name="kernel.event_listener"
-                    event="kernel.response"
-                    method="onKernelResponse"
-                    priority="2048"/>
-            <tag
-                    name="kernel.event_listener"
                     event="kernel.terminate"
                     method="onKernelTerminate"
                     priority="2048"/>

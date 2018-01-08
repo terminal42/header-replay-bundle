@@ -18,40 +18,25 @@ use Symfony\Component\HttpKernel\Event\PostResponseEvent;
 /**
  * Class HeaderReplayStopPropagationListener.
  *
- * This listener is registered with a very high priority on both, the
- * kernel.response and the kernel.terminate listeners. It makes sure
- * it stops propagation of these events if the current request is a preflight
- * request. It never makes sense to modify a preflight request by one of these
- * events as the bundle provides its own event for this.
+ * This listener is registered with a very high priority on the kernel.terminate
+ * listeners. It makes sure it stops propagation of these events if the current
+ * request is a preflight request. kernel.terminate events are usually listeners
+ * that do "heavy" actions so we certainly do not want these to be executed
+ * during a preflight request.
  * If you really need to do this for whatever reason, register a listener
  * with an even higher priority.
  */
 class HeaderReplayStopPropagationListener
 {
     /**
-     * @param FilterResponseEvent $event
-     */
-    public function onKernelResponse(FilterResponseEvent $event)
-    {
-        $this->stopPropagationIfApplicable($event);
-    }
-
-    /**
      * @param PostResponseEvent $event
      */
     public function onKernelTerminate(PostResponseEvent $event)
     {
-        $this->stopPropagationIfApplicable($event);
-    }
-
-    /**
-     * @param KernelEvent $event
-     */
-    private function stopPropagationIfApplicable(KernelEvent $event)
-    {
-        $request = $event->getRequest();
-
-        if (in_array(HeaderReplayListener::CONTENT_TYPE, $request->getAcceptableContentTypes(), true)) {
+        if (in_array(
+            HeaderReplayListener::CONTENT_TYPE,
+            $event->getRequest()->getAcceptableContentTypes(), true)
+        ) {
             $event->stopPropagation();
         }
     }
