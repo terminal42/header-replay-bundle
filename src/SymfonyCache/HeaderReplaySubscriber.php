@@ -14,8 +14,10 @@ namespace Terminal42\HeaderReplay\SymfonyCache;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use FOS\HttpCache\SymfonyCache\Events;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -108,8 +110,17 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
 
             foreach ($headersToReplay as $header) {
+
+                // Make sure Set-Cookie is never considered because we do this
+                // manually
+                $header = strtolower($header);
+                unset($headersToReplay['set-cookie']);
+
                 $request->headers->set($header, $preflightResponse->headers->get($header));
             }
+
+            // Replay Set-Cookie headers (behave like a browser)
+            $this->replayCookieHeaders($preflightResponse, $request);
         }
 
         // Force no cache
@@ -129,6 +140,28 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         return [
             Events::PRE_HANDLE => 'preHandle',
         ];
+    }
+
+    /**
+     * Replay the Cookies from the preflight request to the request in case they
+     * are valid. Unset them if they are expired.
+     * 
+     * @param Response $preflightResponse
+     * @param Request  $request
+     */
+    private function replayCookieHeaders(Response $preflightResponse, Request $request)
+    {
+        /* @var Cookie[] $cookies */
+        $cookies = $preflightResponse->headers->getCookies();
+        foreach ($cookies as $cookie) {
+
+            // Unset if cleared, replay if valid
+            if ($cookie->isCleared()) {
+                $request->cookies->remove($cookie->getName());
+            } else {
+                $request->cookies->set($cookie->getName(), $cookie->getValue());
+            }
+        }
     }
 
     /**
