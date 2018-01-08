@@ -62,8 +62,9 @@ class HeaderReplayListener
 
         $headers = $replayEvent->getHeaders()->all();
 
-        // Unset cache-control which is added by default
+        // Unset cache-control and date which is added by default
         unset($headers['cache-control']);
+        unset($headers['date']);
 
         // No headers, return empty response
         if (0 === count($headers)) {
