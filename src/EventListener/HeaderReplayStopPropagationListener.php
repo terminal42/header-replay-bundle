@@ -25,6 +25,11 @@ use Symfony\Component\HttpKernel\Event\PostResponseEvent;
  * during a preflight request.
  * If you really need to do this for whatever reason, register a listener
  * with an even higher priority.
+ *
+ * This is not relevant if you use the Symfony HttpCache because kernel.terminate
+ * will not be called during the preflight request (same process). It is relevant
+ * if you use a separate reverse proxy such as Varnish and spawn two separate
+ * PHP processes. It is enabled by default so it works out of the box.
  */
 class HeaderReplayStopPropagationListener
 {
