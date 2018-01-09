@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2017, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -107,10 +107,12 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
 
         // Replay headers onto original request
         if ($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)) {
-            $headersToReplay = array_map('strtolower', explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME)));
+            $headersToReplay = array_map(
+                'strtolower',
+                explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME))
+            );
 
             foreach ($headersToReplay as $header) {
-
                 // Make sure Set-Cookie is never considered because we do this
                 // manually
                 unset($headersToReplay['set-cookie']);
@@ -144,7 +146,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     /**
      * Replay the Cookies from the preflight request to the request in case they
      * are valid. Unset them if they are expired.
-     * 
+     *
      * @param Response $preflightResponse
      * @param Request  $request
      */
@@ -153,7 +155,6 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         /* @var Cookie[] $cookies */
         $cookies = $preflightResponse->headers->getCookies();
         foreach ($cookies as $cookie) {
-
             // Unset if cleared, replay if valid
             if ($cookie->isCleared()) {
                 $request->cookies->remove($cookie->getName());

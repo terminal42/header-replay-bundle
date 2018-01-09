@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2017, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -35,6 +35,7 @@ class HeaderReplayStopPropagationListenerTest extends TestCase
         $listener->onKernelTerminate($event);
         $this->assertTrue($event->isPropagationStopped());
     }
+
     public function testPropagationNotStopped()
     {
         $listener = new HeaderReplayStopPropagationListener();
