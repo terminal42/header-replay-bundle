@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2017, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -23,10 +23,10 @@ class HeaderReplayListener
     const REPLAY_HEADER_NAME = 'T42-Replay-Headers';
     const FORCE_NO_CACHE_HEADER_NAME = 'T42-Force-No-Cache';
 
-     /**
-      * @var EventDispatcherInterface
-      */
-     private $eventDispatcher;
+    /**
+     * @var EventDispatcherInterface
+     */
+    private $eventDispatcher;
 
     /**
      * HeaderReplayListener constructor.
@@ -62,8 +62,8 @@ class HeaderReplayListener
 
         $headers = $replayEvent->getHeaders()->all();
 
-        // Unset cache-control which is added by default
-        unset($headers['cache-control']);
+        // Unset cache-control and date which is added by default
+        unset($headers['cache-control'], $headers['date']);
 
         // No headers, return empty response
         if (0 === count($headers)) {

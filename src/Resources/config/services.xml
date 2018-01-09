@@ -13,17 +13,12 @@
                     name="kernel.event_listener"
                     event="kernel.request"
                     method="onKernelRequest"
-                    priority="7"/> <!-- 8 is the firewall -->
+                    priority="-2048"/>
         </service>
         <service
                 id="terminal42.header_replay.header_replay_stop_propagation_listener"
                 class="Terminal42\HeaderReplay\EventListener\HeaderReplayStopPropagationListener">
             <argument type="service" id="event_dispatcher"/>
-            <tag
-                    name="kernel.event_listener"
-                    event="kernel.response"
-                    method="onKernelResponse"
-                    priority="2048"/>
             <tag
                     name="kernel.event_listener"
                     event="kernel.terminate"

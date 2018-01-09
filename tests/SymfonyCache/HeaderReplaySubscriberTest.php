@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2017, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -13,6 +13,7 @@ namespace Terminal42\HeaderReplay\Test\EventListener;
 
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
@@ -45,7 +46,6 @@ class HeaderReplaySubscriberTest extends TestCase
 
         $subscriber = new HeaderReplaySubscriber(['user_context_headers' => ['Whatever', 'Foobar']]);
         $this->assertSame(['whatever', 'foobar'], $subscriber->getUserContextHeaders());
-
     }
 
     public function testNothingHappensIfKernelIsNotHttpCache()
@@ -109,7 +109,7 @@ class HeaderReplaySubscriberTest extends TestCase
     /**
      * @param array $cookies
      * @param array $ignoreCookies
-     * @param bool $expectsPreflight
+     * @param bool  $expectsPreflight
      *
      * @dataProvider ignoreCookiesOption
      */
@@ -133,7 +133,7 @@ class HeaderReplaySubscriberTest extends TestCase
         );
 
         $subscriber = new HeaderReplaySubscriber([
-            'ignore_cookies' => $ignoreCookies
+            'ignore_cookies' => $ignoreCookies,
         ]);
         $subscriber->preHandle($cacheEvent);
     }
@@ -226,9 +226,43 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        // Assert headers replicated
+        // Assert headers correctly replayed
         $this->assertSame('nonsense', $request->headers->get('foobar'));
         $this->assertSame('whatever', $request->headers->get('twobar'));
+    }
+
+    public function testCookiesAreCorrectlyReplayed()
+    {
+        $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
+        $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
+
+        $response = new Response();
+        $response->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
+        $response->headers->setCookie($validCookie);
+        $response->headers->setCookie($expiredCookie);
+
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+
+        // Assert cookies correctly replayed
+        $this->assertSame('foobar', $request->cookies->get('i-am-valid'));
+        $this->assertFalse($request->cookies->has('i-am-expired'));
     }
 
     public function testForceNoCache()
@@ -281,32 +315,32 @@ class HeaderReplaySubscriberTest extends TestCase
             'Preflight is executed if no ignore cookies option set' => [
                 ['Cookie-Name' => 'Cookie-Value', 'Second-Cookie' => 'foobar'],
                 [],
-                true
+                true,
             ],
             'Preflight is executed if one ignore cookie rule is set but does not match' => [
                 ['Cookie-Name' => 'Cookie-Value', 'Second-Cookie' => 'foobar'],
                 ['/^Nonsense/'],
-                true
+                true,
             ],
             'Preflight is executed if more than one ignore cookie rule is set but not all match' => [
                 ['Cookie-Name' => 'Cookie-Value', 'Second-Cookie' => 'foobar'],
                 ['/^Nonsense/', '/More-Nonsense$/'],
-                true
+                true,
             ],
             'No preflight is executed if one ignore cookie rule and it does match' => [
                 ['Cookie-Name' => 'Cookie-Value'],
                 ['/^Cookie-Name$/'],
-                false
+                false,
             ],
             'No preflight is executed if more than one ignore cookie rule and all of them match' => [
                 ['Cookie-Name' => 'Cookie-Value', 'Second-Cookie' => 'foobar'],
                 ['/^Cookie-Name$/', '/^Second.*$/'],
-                false
+                false,
             ],
             'Preflight is executed if more than one ignore cookie rule and only one of them does match' => [
                 ['Cookie-Name' => 'Cookie-Value', 'Second-Cookie' => 'foobar'],
                 ['/^Cookie-Name$/', '/Nonsense(.*)/'],
-                true
+                true,
             ],
         ];
     }

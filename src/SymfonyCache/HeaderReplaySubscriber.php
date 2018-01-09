@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2017, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -14,8 +14,10 @@ namespace Terminal42\HeaderReplay\SymfonyCache;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use FOS\HttpCache\SymfonyCache\Events;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -105,12 +107,22 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
 
         // Replay headers onto original request
         if ($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)) {
-            $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
+            $headersToReplay = array_map(
+                'strtolower',
+                explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME))
+            );
 
             foreach ($headersToReplay as $header) {
+                // Make sure Set-Cookie is never considered because we do this
+                // manually
+                unset($headersToReplay['set-cookie']);
+
                 $request->headers->set($header, $preflightResponse->headers->get($header));
             }
         }
+
+        // Replay Set-Cookie headers (behave like a browser)
+        $this->replayCookieHeaders($preflightResponse, $request);
 
         // Force no cache
         if ($preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {
@@ -129,6 +141,27 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         return [
             Events::PRE_HANDLE => 'preHandle',
         ];
+    }
+
+    /**
+     * Replay the Cookies from the preflight request to the request in case they
+     * are valid. Unset them if they are expired.
+     *
+     * @param Response $preflightResponse
+     * @param Request  $request
+     */
+    private function replayCookieHeaders(Response $preflightResponse, Request $request)
+    {
+        /* @var Cookie[] $cookies */
+        $cookies = $preflightResponse->headers->getCookies();
+        foreach ($cookies as $cookie) {
+            // Unset if cleared, replay if valid
+            if ($cookie->isCleared()) {
+                $request->cookies->remove($cookie->getName());
+            } else {
+                $request->cookies->set($cookie->getName(), $cookie->getValue());
+            }
+        }
     }
 
     /**
