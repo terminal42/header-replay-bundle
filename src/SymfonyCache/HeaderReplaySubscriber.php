@@ -119,10 +119,10 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
 
                 $request->headers->set($header, $preflightResponse->headers->get($header));
             }
-
-            // Replay Set-Cookie headers (behave like a browser)
-            $this->replayCookieHeaders($preflightResponse, $request);
         }
+
+        // Replay Set-Cookie headers (behave like a browser)
+        $this->replayCookieHeaders($preflightResponse, $request);
 
         // Force no cache
         if ($preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {

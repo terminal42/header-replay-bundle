@@ -13,6 +13,7 @@ namespace Terminal42\HeaderReplay\Test\EventListener;
 
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
@@ -225,9 +226,43 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        // Assert headers replicated
+        // Assert headers correctly replayed
         $this->assertSame('nonsense', $request->headers->get('foobar'));
         $this->assertSame('whatever', $request->headers->get('twobar'));
+    }
+
+    public function testCookiesAreCorrectlyReplayed()
+    {
+        $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
+        $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
+
+        $response = new Response();
+        $response->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
+        $response->headers->setCookie($validCookie);
+        $response->headers->setCookie($expiredCookie);
+
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+
+        // Assert cookies correctly replayed
+        $this->assertSame('foobar', $request->cookies->get('i-am-valid'));
+        $this->assertFalse($request->cookies->has('i-am-expired'));
     }
 
     public function testForceNoCache()
