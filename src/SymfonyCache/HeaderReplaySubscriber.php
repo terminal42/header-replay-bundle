@@ -107,13 +107,12 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
 
         // Replay headers onto original request
         if ($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)) {
-            $headersToReplay = explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME));
+            $headersToReplay = array_map('strtolower', explode(',', $preflightResponse->headers->get(HeaderReplayListener::REPLAY_HEADER_NAME)));
 
             foreach ($headersToReplay as $header) {
 
                 // Make sure Set-Cookie is never considered because we do this
                 // manually
-                $header = strtolower($header);
                 unset($headersToReplay['set-cookie']);
 
                 $request->headers->set($header, $preflightResponse->headers->get($header));
