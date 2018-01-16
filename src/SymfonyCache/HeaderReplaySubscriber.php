@@ -95,17 +95,35 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // HeaderReplayListener
         $preflightResponse = $httpCache->getKernel()->handle($duplicate);
 
-        // If the response is not from the HeaderReplayListener somebody else
-        // handled it so we go for an early return here
-        if (200 !== $preflightResponse->getStatusCode()
-            || HeaderReplayListener::CONTENT_TYPE !== $preflightResponse->headers->get('Content-Type')
+        // Only replay headers if it's a valid preflight response
+        if (200 === $preflightResponse->getStatusCode()
+            && HeaderReplayListener::CONTENT_TYPE === $preflightResponse->headers->get('Content-Type')
         ) {
-            $event->setResponse($preflightResponse);
-
-            return;
+            $this->replayHeaders($preflightResponse, $request);
         }
 
-        // Replay headers onto original request
+        // The original request now has our decorated/replayed headers if
+        // applicable and the kernel can continue normally
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function getSubscribedEvents()
+    {
+        return [
+            Events::PRE_HANDLE => 'preHandle',
+        ];
+    }
+
+    /**
+     * Replay headers onto original request.
+     *
+     * @param Response $preflightResponse
+     * @param Request  $request
+     */
+    private function replayHeaders(Response $preflightResponse, Request $request)
+    {
         if ($preflightResponse->headers->has(HeaderReplayListener::REPLAY_HEADER_NAME)) {
             $headersToReplay = array_map(
                 'strtolower',
@@ -128,19 +146,6 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         if ($preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {
             $request->headers->addCacheControlDirective('no-cache');
         }
-
-        // The original request now has our decorated/replayed headers and the
-        // kernel can continue normally
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function getSubscribedEvents()
-    {
-        return [
-            Events::PRE_HANDLE => 'preHandle',
-        ];
     }
 
     /**
