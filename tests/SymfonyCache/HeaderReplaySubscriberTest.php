@@ -169,7 +169,7 @@ class HeaderReplaySubscriberTest extends TestCase
      * @param Response $response
      * @dataProvider noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse
      */
-    public function testNoHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse(Response $response)
+    public function testNoHeadersAddedIfResponseIsNotACorrectPreflightResponse(Response $response)
     {
         $kernel = $this->createMock(HttpCache::class);
         $kernel
@@ -195,8 +195,9 @@ class HeaderReplaySubscriberTest extends TestCase
         // Assert no headers were added
         $this->assertSame($preCount, $request->headers->count());
 
-        // Assert response was set to event
-        $this->assertSame($response, $cacheEvent->getResponse());
+        // Assert response was not set to event but instead just left for
+        // the kernel to be handled
+        $this->assertNull($cacheEvent->getResponse());
     }
 
     public function testReplayHeaders()
