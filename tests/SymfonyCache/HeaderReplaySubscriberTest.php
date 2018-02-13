@@ -301,7 +301,7 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        $this->assertTrue($request->headers->getCacheControlDirective('no-cache'));
+        $this->assertTrue($request->headers->has('Expect'));
     }
 
     public function noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse()

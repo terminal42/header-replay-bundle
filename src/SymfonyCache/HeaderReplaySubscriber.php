@@ -144,7 +144,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
 
         // Force no cache
         if ($preflightResponse->headers->has(HeaderReplayListener::FORCE_NO_CACHE_HEADER_NAME)) {
-            $request->headers->addCacheControlDirective('no-cache');
+            $request->headers->set('Expect', '100-continue');
         }
     }
 
