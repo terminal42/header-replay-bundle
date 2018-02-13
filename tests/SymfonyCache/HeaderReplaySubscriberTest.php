@@ -169,8 +169,14 @@ class HeaderReplaySubscriberTest extends TestCase
      * @param Response $response
      * @dataProvider noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse
      */
-    public function testNoHeadersAddedIfResponseIsNotACorrectPreflightResponse(Response $response)
+    public function testNoHeadersAddedButCookiesAreReplayedIfResponseIsNotACorrectPreflightResponse(Response $response)
     {
+        $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
+        $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
+
+        $response->headers->setCookie($validCookie);
+        $response->headers->setCookie($expiredCookie);
+
         $kernel = $this->createMock(HttpCache::class);
         $kernel
             ->expects($this->once())
@@ -198,6 +204,10 @@ class HeaderReplaySubscriberTest extends TestCase
         // Assert response was not set to event but instead just left for
         // the kernel to be handled
         $this->assertNull($cacheEvent->getResponse());
+
+        // Assert cookies correctly replayed
+        $this->assertSame('foobar', $request->cookies->get('i-am-valid'));
+        $this->assertFalse($request->cookies->has('i-am-expired'));
     }
 
     public function testReplayHeaders()
@@ -291,8 +301,7 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        //var_dump($request->headers->getCacheControlDirective());exit;
-        $this->assertTrue($request->headers->getCacheControlDirective('no-cache'));
+        $this->assertTrue($request->headers->has('Expect'));
     }
 
     public function noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse()
