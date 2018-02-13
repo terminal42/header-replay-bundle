@@ -291,7 +291,6 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        //var_dump($request->headers->getCacheControlDirective());exit;
         $this->assertTrue($request->headers->getCacheControlDirective('no-cache'));
     }
 
