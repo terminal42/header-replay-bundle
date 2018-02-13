@@ -85,8 +85,14 @@ Open a command console, enter your project directory and execute the
 following command to download the latest stable version of this bundle:
 
 ```console
-$ composer require terminal42/header-replay-bundle "^1.0"
+$ composer require terminal42/header-replay-bundle "^1.0" php-http/guzzle6-adapter "^1.0.0"
 ```
+
+The `header-replay-bundle` sits on top of the `friendsofsymfony/http-cache-bundle`
+which requires the virtual package `php-http/client-implementation`.
+You can use any client-implementation you like but you have to require one, which
+is why in this example we've used `php-http/guzzle6-adapter`.
+You can read more about HTTPlug [here](http://docs.php-http.org/en/latest/httplug/users.html). 
 
 This command requires you to have Composer installed globally, as explained
 in the [installation chapter](https://getcomposer.org/doc/00-intro.md)
