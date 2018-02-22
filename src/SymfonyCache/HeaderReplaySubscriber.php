@@ -95,6 +95,13 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // HeaderReplayListener
         $preflightResponse = $httpCache->getKernel()->handle($duplicate);
 
+        // Early abort if the preflight response wanted to redirect for whatever
+        // reason
+        if ($preflightResponse->isRedirection()) {
+            $event->setResponse($preflightResponse);
+            return;
+        }
+
         // Only replay headers if it's a valid preflight response
         if (200 === $preflightResponse->getStatusCode()
             && HeaderReplayListener::CONTENT_TYPE === $preflightResponse->headers->get('Content-Type')

@@ -14,6 +14,7 @@ namespace Terminal42\HeaderReplay\Test\EventListener;
 use FOS\HttpCache\SymfonyCache\CacheEvent;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpCache\HttpCache;
@@ -165,6 +166,33 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber->preHandle($cacheEvent);
     }
 
+    public function testEarlyAbortIfRedirectionOnPreflightResponse()
+    {
+        $response = new RedirectResponse('https://foobar.com');
+
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+
+        // Assert headers correctly replayed
+        $this->assertSame($response, $cacheEvent->getResponse());
+    }
+
     /**
      * @param Response $response
      * @dataProvider noHeadersAddedAndEarlyResponseIfResponseIsNotACorrectPreflightResponse
@@ -308,7 +336,7 @@ class HeaderReplaySubscriberTest extends TestCase
     {
         return [
             'Response has wrong status code' => [
-                new Response('', 303),
+                new Response('', 400),
             ],
             'Response has wrong content type but correct status code' => [
                 new Response('', 200, ['Content-Type', 'application/json']),
