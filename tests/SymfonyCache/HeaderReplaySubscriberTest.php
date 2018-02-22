@@ -189,7 +189,6 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $subscriber->preHandle($cacheEvent);
 
-        // Assert headers correctly replayed
         $this->assertSame($response, $cacheEvent->getResponse());
     }
 
