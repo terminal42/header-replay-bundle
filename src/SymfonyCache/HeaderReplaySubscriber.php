@@ -99,6 +99,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // reason
         if ($preflightResponse->isRedirection()) {
             $event->setResponse($preflightResponse);
+
             return;
         }
 
@@ -220,7 +221,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         $count = $cookies->count();
 
-        if (0 === count($this->options['ignore_cookies'])) {
+        if (0 === \count($this->options['ignore_cookies'])) {
             return 0 !== $count;
         }
 
@@ -234,6 +235,6 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             }
         }
 
-        return 0 !== count($blackList);
+        return 0 !== \count($blackList);
     }
 }
