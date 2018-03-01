@@ -95,6 +95,14 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // HeaderReplayListener
         $preflightResponse = $httpCache->getKernel()->handle($duplicate);
 
+        // Early abort if the preflight response wanted to redirect for whatever
+        // reason
+        if ($preflightResponse->isRedirection()) {
+            $event->setResponse($preflightResponse);
+
+            return;
+        }
+
         // Only replay headers if it's a valid preflight response
         if (200 === $preflightResponse->getStatusCode()
             && HeaderReplayListener::CONTENT_TYPE === $preflightResponse->headers->get('Content-Type')
@@ -213,7 +221,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         $count = $cookies->count();
 
-        if (0 === count($this->options['ignore_cookies'])) {
+        if (0 === \count($this->options['ignore_cookies'])) {
             return 0 !== $count;
         }
 
@@ -227,6 +235,6 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             }
         }
 
-        return 0 !== count($blackList);
+        return 0 !== \count($blackList);
     }
 }

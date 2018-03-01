@@ -37,7 +37,7 @@ class HeaderReplayStopPropagationListener
      */
     public function onKernelTerminate(PostResponseEvent $event)
     {
-        if (in_array(
+        if (\in_array(
             HeaderReplayListener::CONTENT_TYPE,
             $event->getRequest()->getAcceptableContentTypes(), true)
         ) {
