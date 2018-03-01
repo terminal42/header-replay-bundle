@@ -51,7 +51,7 @@ class HeaderReplayListener
 
         // If Content-Type matches, we always have to send a response so we
         // abort if this is not the case
-        if (!in_array(self::CONTENT_TYPE, $request->getAcceptableContentTypes(), true)) {
+        if (!\in_array(self::CONTENT_TYPE, $request->getAcceptableContentTypes(), true)) {
             return;
         }
 
@@ -66,7 +66,7 @@ class HeaderReplayListener
         unset($headers['cache-control'], $headers['date']);
 
         // No headers, return empty response
-        if (0 === count($headers)) {
+        if (0 === \count($headers)) {
             $event->setResponse($response);
 
             return;
