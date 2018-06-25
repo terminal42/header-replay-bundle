@@ -10,16 +10,16 @@
         }
     ],
     "require": {
-        "php": ">=5.6,<8",
-        "friendsofsymfony/http-cache-bundle": "2.*",
-        "friendsofsymfony/http-cache": "2.*",
-        "symfony/options-resolver": "^3.3"
+        "php": "^5.6 | ^7.0",
+        "friendsofsymfony/http-cache-bundle": "^2.1",
+        "friendsofsymfony/http-cache": "^2.1",
+        "symfony/options-resolver": "^3.3 | ^4.0"
     },
     "require-dev": {
         "php-http/guzzle6-adapter": "^1.1",
         "phpunit/phpunit": "^5.7",
         "friendsofphp/php-cs-fixer": "^2.1",
-        "satooshi/php-coveralls": "2.*@dev",
+        "php-coveralls/php-coveralls": "^2.1",
         "leofeyer/optimize-native-functions-fixer": "^1.1"
     },
     "autoload": {
