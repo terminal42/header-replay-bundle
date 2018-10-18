@@ -33,7 +33,7 @@ class HeaderReplaySubscriberTest extends TestCase
         $subscriber = new HeaderReplaySubscriber();
         $events = $subscriber::getSubscribedEvents();
 
-        $this->assertCount(1, $events);
+        $this->assertCount(2, $events);
     }
 
     public function testUserContextHeaders()
@@ -269,7 +269,7 @@ class HeaderReplaySubscriberTest extends TestCase
         $this->assertSame('whatever', $request->headers->get('twobar'));
     }
 
-    public function testCookiesAreCorrectlyReplayed()
+    public function testCookiesAreCorrectlyReplayedToRequest()
     {
         $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
         $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
@@ -301,6 +301,54 @@ class HeaderReplaySubscriberTest extends TestCase
         // Assert cookies correctly replayed
         $this->assertSame('foobar', $request->cookies->get('i-am-valid'));
         $this->assertFalse($request->cookies->has('i-am-expired'));
+    }
+
+    public function testCookiesAreCorrectlyReplayedToResponse()
+    {
+        $cookieNotPresent = new Cookie('i-am-not-present-on-request', 'foobar', time() + 5000);
+
+        $preflightResponse = new Response();
+        $preflightResponse->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
+        $preflightResponse->headers->setCookie($cookieNotPresent);
+
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->exactly(2))
+            ->method('handle')
+            ->willReturn($preflightResponse);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $preHandleCacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($preHandleCacheEvent);
+
+        $emptyResponse = new Response();
+
+        $postHandleCacheEvent = new CacheEvent(
+            $httpCache,
+            $request,
+            $emptyResponse
+        );
+
+        // Imitate an irrelevant subrequest such as an ESI request
+        $subscriber->preHandle($preHandleCacheEvent);
+        $subscriber->postHandle($postHandleCacheEvent);
+
+        $subscriber->postHandle($postHandleCacheEvent);
+
+        $response = $postHandleCacheEvent->getResponse();
+        $cookies = $response->headers->getCookies();
+
+        $this->assertSame('i-am-not-present-on-request', $cookies[0]->getName());
+        $this->assertSame('foobar', $cookies[0]->getValue());
     }
 
     public function testForceNoCache()
