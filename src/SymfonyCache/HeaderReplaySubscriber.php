@@ -203,6 +203,11 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     private function replayCookieHeadersToResponse(Response $response)
     {
         $preflightResponse = array_pop($this->preflightResponses);
+
+        if (!$preflightResponse instanceof Response) {
+            return;
+        }
+
         $responseCookieNames = [];
 
         /** @var Cookie $cookie */
