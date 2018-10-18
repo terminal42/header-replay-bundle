@@ -351,6 +351,38 @@ class HeaderReplaySubscriberTest extends TestCase
         $this->assertSame('foobar', $cookies[0]->getValue());
     }
 
+    public function testPostHandleDoesNotCrashIfNoPreflightResponse()
+    {
+        $response = new Response();
+
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->never())
+            ->method('handle')
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $preHandleCacheEvent = new CacheEvent(
+            $httpCache,
+            $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+
+        $postHandleCacheEvent = new CacheEvent(
+            $httpCache,
+            $request,
+            $response
+        );
+
+        $subscriber->preHandle($preHandleCacheEvent);
+        $subscriber->postHandle($postHandleCacheEvent); // Would cause an error if check was not present
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testForceNoCache()
     {
         $response = new Response();
