@@ -31,6 +31,11 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     private $options = [];
 
     /**
+     * @var Response[]
+     */
+    private $preflightResponses = [];
+
+    /**
      * HeaderReplaySubscriber constructor.
      *
      * @param array $options
@@ -111,10 +116,21 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         }
 
         // Replay Set-Cookie headers (behave like a browser)
-        $this->replayCookieHeaders($preflightResponse, $request);
+        $this->replayCookieHeadersToRequest($preflightResponse, $request);
+
+        // Store preflight response for later reference in postHandle()
+        $this->preflightResponses[] = $preflightResponse;
 
         // The original request now has our decorated/replayed headers if
         // applicable and the kernel can continue normally
+    }
+
+    /**
+     * @param CacheEvent $event
+     */
+    public function postHandle(CacheEvent $event)
+    {
+        $this->replayCookieHeadersToResponse($event->getResponse());
     }
 
     /**
@@ -124,6 +140,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     {
         return [
             Events::PRE_HANDLE => 'preHandle',
+            Events::POST_HANDLE => 'postHandle',
         ];
     }
 
@@ -163,7 +180,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
      * @param Response $preflightResponse
      * @param Request  $request
      */
-    private function replayCookieHeaders(Response $preflightResponse, Request $request)
+    private function replayCookieHeadersToRequest(Response $preflightResponse, Request $request)
     {
         /* @var Cookie[] $cookies */
         $cookies = $preflightResponse->headers->getCookies();
@@ -173,6 +190,29 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
                 $request->cookies->remove($cookie->getName());
             } else {
                 $request->cookies->set($cookie->getName(), $cookie->getValue());
+            }
+        }
+    }
+
+    /**
+     * Replay the Cookies from the preflight response to the real response in case
+     * they are not present.
+     *
+     * @param Response $response
+     */
+    private function replayCookieHeadersToResponse(Response $response)
+    {
+        $preflightResponse = array_pop($this->preflightResponses);
+        $responseCookieNames = [];
+
+        /** @var Cookie $cookie */
+        foreach ($response->headers->getCookies() as $cookie) {
+            $responseCookieNames[] = $cookie->getName();
+        }
+
+        foreach ($preflightResponse->headers->getCookies() as $cookie) {
+            if (!\in_array($cookie->getName(), $responseCookieNames, true)) {
+                $response->headers->setCookie($cookie);
             }
         }
     }
