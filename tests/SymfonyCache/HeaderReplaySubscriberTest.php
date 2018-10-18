@@ -199,7 +199,7 @@ class HeaderReplaySubscriberTest extends TestCase
     public function testNoHeadersAddedButCookiesAreReplayedIfResponseIsNotACorrectPreflightResponse(Response $response)
     {
         $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
-        $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
+        $expiredCookie = new Cookie('i-am-expired', 'foobar', 1);
 
         $response->headers->setCookie($validCookie);
         $response->headers->setCookie($expiredCookie);
@@ -272,7 +272,7 @@ class HeaderReplaySubscriberTest extends TestCase
     public function testCookiesAreCorrectlyReplayedToRequest()
     {
         $validCookie = new Cookie('i-am-valid', 'foobar', time() + 5000);
-        $expiredCookie = new Cookie('i-am-expired', 'foobar', 0);
+        $expiredCookie = new Cookie('i-am-expired', 'foobar', 1);
 
         $response = new Response();
         $response->headers->set('Content-Type', HeaderReplayListener::CONTENT_TYPE);
