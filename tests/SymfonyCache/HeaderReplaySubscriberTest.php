@@ -313,7 +313,7 @@ class HeaderReplaySubscriberTest extends TestCase
 
         $kernel = $this->createMock(HttpCache::class);
         $kernel
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('handle')
             ->willReturn($preflightResponse);
 
@@ -322,25 +322,29 @@ class HeaderReplaySubscriberTest extends TestCase
         $request = Request::create('/foobar', 'GET');
         $request->cookies->set('Foo', 'Bar');
 
-        $cacheEvent = new CacheEvent(
+        $preHandleCacheEvent = new CacheEvent(
             $httpCache,
             $request
         );
 
         $subscriber = new HeaderReplaySubscriber();
-        $subscriber->preHandle($cacheEvent);
+        $subscriber->preHandle($preHandleCacheEvent);
 
         $emptyResponse = new Response();
 
-        $cacheEvent = new CacheEvent(
+        $postHandleCacheEvent = new CacheEvent(
             $httpCache,
             $request,
             $emptyResponse
         );
 
-        $subscriber->postHandle($cacheEvent);
+        // Imitate an irrelevant subrequest such as an ESI request
+        $subscriber->preHandle($preHandleCacheEvent);
+        $subscriber->postHandle($postHandleCacheEvent);
 
-        $response = $cacheEvent->getResponse();
+        $subscriber->postHandle($postHandleCacheEvent);
+
+        $response = $postHandleCacheEvent->getResponse();
         $cookies = $response->headers->getCookies();
 
         $this->assertSame('i-am-not-present-on-request', $cookies[0]->getName());

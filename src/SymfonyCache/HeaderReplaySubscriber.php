@@ -31,9 +31,9 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
     private $options = [];
 
     /**
-     * @var Cookie[]
+     * @var Response[]
      */
-    private $preflightResponseCookies = [];
+    private $preflightResponses = [];
 
     /**
      * HeaderReplaySubscriber constructor.
@@ -118,9 +118,8 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // Replay Set-Cookie headers (behave like a browser)
         $this->replayCookieHeadersToRequest($preflightResponse, $request);
 
-        // Store preflight response cookies. Those that are not present on the
-        // real response need to be added
-        $this->preflightResponseCookies = $preflightResponse->headers->getCookies();
+        // Store preflight response for later reference in postHandle()
+        $this->preflightResponses[] = $preflightResponse;
 
         // The original request now has our decorated/replayed headers if
         // applicable and the kernel can continue normally
@@ -203,6 +202,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
      */
     private function replayCookieHeadersToResponse(Response $response)
     {
+        $preflightResponse = array_pop($this->preflightResponses);
         $responseCookieNames = [];
 
         /** @var Cookie $cookie */
@@ -210,7 +210,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
             $responseCookieNames[] = $cookie->getName();
         }
 
-        foreach ($this->preflightResponseCookies as $cookie) {
+        foreach ($preflightResponse->headers->getCookies() as $cookie) {
             if (!\in_array($cookie->getName(), $responseCookieNames, true)) {
                 $response->headers->setCookie($cookie);
             }
