@@ -98,7 +98,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // Pass the duplicated request to the original kernel (so cache is bypassed)
         // which should result in the preflight request response handled by the
         // HeaderReplayListener
-        $preflightResponse = $httpCache->getKernel()->handle($duplicate);
+        $preflightResponse = $httpCache->getKernel()->handle($duplicate, $event->getRequestType());
 
         // Early abort if the preflight response wanted to redirect for whatever
         // reason

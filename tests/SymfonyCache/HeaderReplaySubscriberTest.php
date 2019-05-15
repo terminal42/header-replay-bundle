@@ -146,10 +146,13 @@ class HeaderReplaySubscriberTest extends TestCase
         $kernel
             ->expects($this->once())
             ->method('handle')
-            ->with($this->callback(function (Request $request) {
-                return 'HEAD' === $request->getMethod() &&
-                    HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
-            }))
+            ->with(
+                $this->callback(function (Request $request) {
+                    return 'HEAD' === $request->getMethod() &&
+                        HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
+                }),
+                $this->equalTo(HttpKernelInterface::MASTER_REQUEST)
+            )
             ->willReturn($response);
 
         $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
@@ -160,6 +163,38 @@ class HeaderReplaySubscriberTest extends TestCase
         $cacheEvent = new CacheEvent(
             $httpCache,
             $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testKernelIsCorrectlyCalledWithRequestType()
+    {
+        $response = new Response();
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->with(
+                $this->callback(function (Request $request) {
+                    return 'HEAD' === $request->getMethod() &&
+                        HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
+                }),
+                $this->equalTo(HttpKernelInterface::SUB_REQUEST)
+            )
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request,
+            null,
+            HttpKernelInterface::SUB_REQUEST
         );
 
         $subscriber = new HeaderReplaySubscriber();
