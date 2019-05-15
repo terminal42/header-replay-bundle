@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2019, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -98,7 +98,7 @@ class HeaderReplaySubscriber implements EventSubscriberInterface
         // Pass the duplicated request to the original kernel (so cache is bypassed)
         // which should result in the preflight request response handled by the
         // HeaderReplayListener
-        $preflightResponse = $httpCache->getKernel()->handle($duplicate);
+        $preflightResponse = $httpCache->getKernel()->handle($duplicate, $event->getRequestType());
 
         // Early abort if the preflight response wanted to redirect for whatever
         // reason

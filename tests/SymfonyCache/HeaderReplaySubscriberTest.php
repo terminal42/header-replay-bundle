@@ -3,7 +3,7 @@
 /*
  * terminal42/header-replay-bundle for Symfony
  *
- * @copyright  Copyright (c) 2008-2018, terminal42 gmbh
+ * @copyright  Copyright (c) 2008-2019, terminal42 gmbh
  * @author     terminal42 gmbh <info@terminal42.ch>
  * @license    MIT
  * @link       http://github.com/terminal42/header-replay-bundle
@@ -146,10 +146,13 @@ class HeaderReplaySubscriberTest extends TestCase
         $kernel
             ->expects($this->once())
             ->method('handle')
-            ->with($this->callback(function (Request $request) {
-                return 'HEAD' === $request->getMethod() &&
-                    HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
-            }))
+            ->with(
+                $this->callback(function (Request $request) {
+                    return 'HEAD' === $request->getMethod() &&
+                        HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
+                }),
+                $this->equalTo(HttpKernelInterface::MASTER_REQUEST)
+            )
             ->willReturn($response);
 
         $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
@@ -160,6 +163,38 @@ class HeaderReplaySubscriberTest extends TestCase
         $cacheEvent = new CacheEvent(
             $httpCache,
             $request
+        );
+
+        $subscriber = new HeaderReplaySubscriber();
+        $subscriber->preHandle($cacheEvent);
+    }
+
+    public function testKernelIsCorrectlyCalledWithRequestType()
+    {
+        $response = new Response();
+        $kernel = $this->createMock(HttpCache::class);
+        $kernel
+            ->expects($this->once())
+            ->method('handle')
+            ->with(
+                $this->callback(function (Request $request) {
+                    return 'HEAD' === $request->getMethod() &&
+                        HeaderReplayListener::CONTENT_TYPE === $request->headers->get('Accept');
+                }),
+                $this->equalTo(HttpKernelInterface::SUB_REQUEST)
+            )
+            ->willReturn($response);
+
+        $httpCache = $this->getHttpCacheKernelWithGivenKernel($kernel);
+
+        $request = Request::create('/foobar', 'GET');
+        $request->cookies->set('Foo', 'Bar');
+
+        $cacheEvent = new CacheEvent(
+            $httpCache,
+            $request,
+            null,
+            HttpKernelInterface::SUB_REQUEST
         );
 
         $subscriber = new HeaderReplaySubscriber();
